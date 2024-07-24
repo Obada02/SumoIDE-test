@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog,Menu, MenuItem } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -8,24 +8,36 @@ const createWindow = () => {
     height: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true,
-      contextIsolation: false,
-    }
+      contextIsolation: true,
+      enableRemoteModule: false,
+      nodeIntegration: false,
+    },
   });
 
   win.loadFile('index.html');
+
+  // Right-click context menu
+  const contextMenu = new Menu();
+  contextMenu.append(new MenuItem({
+    label: 'Toggle Developer Tools',
+    click: () => win.webContents.toggleDevTools()
+  }));
+
+  win.webContents.on('context-menu', (e, params) => {
+    contextMenu.popup(win, params.x, params.y);
+  });
 };
 
 app.whenReady().then(() => {
   createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
 ipcMain.handle('open-file', async () => {
